@@ -7,7 +7,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <time.h>
 
 #define USERNAME_SIZE 50
 #define CLUETEXT_SIZE 250
@@ -30,11 +30,11 @@ typedef struct treasure{
 
 void printTreasure(treasure_t* t){
 
-    printf("\nTreasure ID: %d\n",t->id);
+    printf("Treasure ID: %d\n",t->id);
     printf("Username: %s\n",t->username);
-    printf("GPS Coordinates\n -x: %f \n -y: %f\n",t->coordinates.x,t->coordinates.y);
+    printf("GPS Coordinates\n -x: %.2f \n -y: %.2f\n",t->coordinates.x,t->coordinates.y);
     printf("Value: %d\n",t->value);
-    printf("Clue Text: %s\n\n",t->clueText);
+    printf("Clue Text: %s\n",t->clueText);
     
 }
 
@@ -54,9 +54,26 @@ void List(char* huntId){
         perror("Not enough space to allocate for treasure_t -- List()\n");
     }
 
-    fread(t,sizeof(treasure_t),1,file);
 
-    printTreasure(t);
+    printf("\nThe Hunt Name: %s",huntId);
+
+    struct stat fileStat;
+
+    if(stat(path,&fileStat) == -1){
+        perror("Could not obtain any informations about the files");
+        exit(1);
+    }
+
+    printf("\nFile Size: %lld bytes\n", (long long) fileStat.st_size);
+
+    // Afișează ultima modificare a fișierului
+    printf("Last modification time: %s\n", ctime(&fileStat.st_mtime));
+
+
+    while(fread(t,sizeof(treasure_t),1,file)){
+        printTreasure(t);
+    }
+
 
 }
 
@@ -72,12 +89,31 @@ unsigned int hashId(const char *str ){
 }
 */
 
-treasure_t* AddTreasure(treasure_t* t,char* directoryName){
+void appendData(treasure_t* t, const char* directoryName){
+
+    char treasures_path[PATH_FILE_SIZE];
+    snprintf(treasures_path, sizeof(treasures_path), "%s/%s_treasures.dat", directoryName, directoryName);
+
+    FILE* treasures_file = NULL;
+    if((treasures_file = fopen(treasures_path,"ab+")) == NULL)
+    {
+        perror("Error at opening the treasures file");
+        exit(1);
+    }
+
+    fseek(treasures_file, 0, SEEK_END);
+
+    fwrite(t,sizeof(treasure_t),1,treasures_file);
+
+    fclose(treasures_file);
+
+}
+
+int AddTreasure(treasure_t* t,char* directoryName){
     
     // === READ DATA ===
     printf("Treasure ID: ");
     scanf("%u",&t->id);
-    //t->id = hashId(directoryName);
 
     printf("Username: ");
     scanf("%50s",t->username);
@@ -101,12 +137,14 @@ treasure_t* AddTreasure(treasure_t* t,char* directoryName){
         exit(1);
     }
 
-    // === CREAT DIRECTORY ===
-    if(mkdir(directoryName) != 0)
-    {
-        fprintf(stderr, "The directory %s either exists or could not be created \n",directoryName);
-        exit(1);
+    // === CREAT DIRECTORY OR APPEND THE TREASURE TO EXISTING TREASURES ===
+
+    if(mkdir(directoryName) != 0){
+        // The Data needs to be appended to the existing files
+        appendData(t,directoryName);
+        return 1;
     }
+
 
     // === CREATING FILES ===
     char treasures_path[PATH_FILE_SIZE];
@@ -155,7 +193,7 @@ treasure_t* AddTreasure(treasure_t* t,char* directoryName){
     fclose(logged_hunt_file);
     fclose(main_logged_hunt_file);
 
-    return t;
+    return 1;
 }
 
 
@@ -185,7 +223,7 @@ int main(int argc, char** argv ){
 
 
 
-        treasure = AddTreasure(treasure,argv[2]);
+        AddTreasure(treasure,argv[2]);
 
     }else if(strcmp(argv[1],"--list")==0){
         if(argc != 3){
