@@ -196,6 +196,50 @@ int AddTreasure(treasure_t* t,char* directoryName){
     return 1;
 }
 
+int RemoveTreasure(char* hunt_id,char* treasure_id){
+    char treasures_path[PATH_FILE_SIZE];
+    char temp_path[PATH_FILE_SIZE];
+    snprintf(treasures_path, sizeof(treasures_path), "%s/%s_treasures.dat", hunt_id, hunt_id);
+    snprintf(temp_path,sizeof(temp_path),"%s/temp_file.dat",hunt_id);
+
+    FILE* treasure_file = NULL;
+    FILE* temp_file = NULL;
+    if((treasure_file = fopen(treasures_path,"rb")) == NULL){
+        perror("Could not open the treasure file --RemoveTreasure()");
+        exit(1);
+    }
+    if((temp_file = fopen(temp_path,"wb")) == NULL){
+        perror("Could not open the temp file --RemoveTreasure()");
+        exit(1);
+    }
+
+    treasure_t* t = malloc(sizeof(treasure_t));
+    unsigned int id = atoi(treasure_id);
+    int foundTheTreasure = -1;
+
+    while(fread(t,sizeof(treasure_t),1,treasure_file)){
+        if(t->id != id){
+            fwrite(t,sizeof(treasure_t),1,temp_file);
+        }else{
+            foundTheTreasure = 1;
+        }
+    }
+
+    if(foundTheTreasure == -1){
+        printf("There was no treasure with the id of %d\n",id);
+        return 1;
+    }
+
+    fclose(temp_file);
+    fclose(treasure_file);
+
+    remove(treasures_path);
+    rename(temp_path,treasures_path);
+
+    printf("The treasure with the id: %d from %s, was removed succefully\n",id,hunt_id);
+
+    return 1;
+}
 
 int main(int argc, char** argv ){
     
@@ -221,8 +265,6 @@ int main(int argc, char** argv ){
             }
         }
 
-
-
         AddTreasure(treasure,argv[2]);
 
     }else if(strcmp(argv[1],"--list")==0){
@@ -233,8 +275,13 @@ int main(int argc, char** argv ){
 
         List(argv[2]);
 
-    }else{
+    }else if(strcmp(argv[1],"--remove_treasure") == 0){
+        if(argc != 4){
+            perror("Enter a game name and a specific trasure(id)\n");
+            exit(1);
+        }
 
+        RemoveTreasure(argv[2],argv[3]);
     }
 
     return 0;
