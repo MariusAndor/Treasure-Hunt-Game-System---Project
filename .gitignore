@@ -1,1 +1,3 @@
-.exe
+*.exe
+game*/
+logged_hunt_game*.dat
