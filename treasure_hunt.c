@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <windows.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -21,44 +22,62 @@ typedef struct gps{
 typedef struct treasure{
     unsigned int id;
     char username[USERNAME_SIZE];
-    char clueText[CLUETEXT_SIZE];
     gps_t coordinates;
     int value;
+    char clueText[CLUETEXT_SIZE];
 }treasure_t;
 
 
-void ListTreasure(treasure_t* t){
+void printTreasure(treasure_t* t){
 
-    printf("Treasure ID: %d\n",t->id);
+    printf("\nTreasure ID: %d\n",t->id);
     printf("Username: %s\n",t->username);
     printf("GPS Coordinates\n -x: %f \n -y: %f\n",t->coordinates.x,t->coordinates.y);
-    printf("Clue Text: %s\n",t->clueText);
-    printf("Value: %d\n\n",t->value);
+    printf("Value: %d\n",t->value);
+    printf("Clue Text: %s\n\n",t->clueText);
     
 }
 
-void printFromFile(){
+void List(char* huntId){
     FILE* file = NULL;
 
-    if((file = fopen("game1/game1_treasures.dat","ab+")) == NULL)
-    {
-        perror("Error at opening the treasures file");
+    char path[PATH_FILE_SIZE];
+    snprintf(path, sizeof(path), "%s/%s_treasures.dat", huntId,huntId);
+    
+    if((file = fopen(path,"rb") ) == NULL){
+        perror("When trying to list the hunts, the files could not be opened or could not be found\n");
         exit(1);
     }
 
-    treasure_t* t =malloc(sizeof(treasure_t));
+    treasure_t* t = malloc(sizeof(treasure_t));
+    if(t == NULL){
+        perror("Not enough space to allocate for treasure_t -- List()\n");
+    }
+
     fread(t,sizeof(treasure_t),1,file);
 
-    ListTreasure(t);
+    printTreasure(t);
 
-    fclose(file);
 }
+
+/* === IN CASE I NEED A HASH MAP FOR ID ===
+unsigned int hashId(const char *str ){
+    unsigned int hash = 0;
+    while(*str){
+        hash = (hash * 31) + *str;
+        str++;
+    }
+
+    return hash % 1000;
+}
+*/
 
 treasure_t* AddTreasure(treasure_t* t,char* directoryName){
     
     // === READ DATA ===
     printf("Treasure ID: ");
     scanf("%u",&t->id);
+    //t->id = hashId(directoryName);
 
     printf("Username: ");
     scanf("%50s",t->username);
@@ -70,9 +89,10 @@ treasure_t* AddTreasure(treasure_t* t,char* directoryName){
 
     printf("Value: ");
     scanf("%d",&t->value);
+    getchar();
 
     printf("Clue Text: \n");
-    scanf("%250s",t->clueText);
+    fgets(t->clueText,sizeof(t->clueText),stdin);
 
     
     if(strlen(directoryName) > PATH_FILE_SIZE-1)
@@ -95,7 +115,7 @@ treasure_t* AddTreasure(treasure_t* t,char* directoryName){
 
     snprintf(treasures_path, sizeof(treasures_path), "%s/%s_treasures.dat", directoryName, directoryName);
     snprintf(logged_hunt_path, sizeof(logged_hunt_path), "%s/logged_hunt.dat", directoryName);
-    snprintf(main_logged_hunt_path, sizeof(main_logged_hunt_path),"logged_hunt_%s.dat", directoryName);
+    snprintf(main_logged_hunt_path, sizeof(main_logged_hunt_path),"logged_hunt-%u.dat", t->id);
 
     FILE* treasures_file = NULL;
     FILE* logged_hunt_file = NULL;
@@ -124,13 +144,12 @@ treasure_t* AddTreasure(treasure_t* t,char* directoryName){
 
     // === SYMBOLIC LINK ===
     // TO DO - SymLink not created
-    if(CreateSymbolicLink(logged_hunt_path,main_logged_hunt_path,0) == 0)
+
+    if(CreateSymbolicLink(main_logged_hunt_path,logged_hunt_path,0) != 0)
     {
         perror("Symbolic link could not be created\n");
         exit(1);
     }
-
-
 
     fclose(treasures_file);
     fclose(logged_hunt_file);
@@ -148,7 +167,6 @@ int main(int argc, char** argv ){
         exit(1);
     }
 
-            //Q: Vrea array sau o variabila?
     treasure_t* treasure = NULL;
 
     if(strcmp(argv[1],"--add")==0){
@@ -170,6 +188,12 @@ int main(int argc, char** argv ){
         treasure = AddTreasure(treasure,argv[2]);
 
     }else if(strcmp(argv[1],"--list")==0){
+        if(argc != 3){
+            perror("Enter a game name\n");
+            exit(1);
+        }
+
+        List(argv[2]);
 
     }else{
 
