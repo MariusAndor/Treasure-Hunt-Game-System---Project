@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -12,7 +13,7 @@
 #define USERNAME_SIZE 50
 #define CLUETEXT_SIZE 250
 #define PATH_FILE_SIZE 256
-
+#define TwoPATHs_FILE_SIZE 527
 
 typedef struct gps{
     float x;
@@ -57,7 +58,7 @@ void List(char* huntId){
 
     printf("\nThe Hunt Name: %s",huntId);
 
-    struct stat fileStat;
+    struct stat fileStat; // The stats of the file
 
     if(stat(path,&fileStat) == -1){
         perror("Could not obtain any informations about the files");
@@ -241,6 +242,69 @@ int RemoveTreasure(char* hunt_id,char* treasure_id){
     return 1;
 }
 
+int RemoveHunt(char* hunt_id){
+    
+    DIR* dir = NULL;
+    char dirPath[PATH_FILE_SIZE];
+    char filePath[TwoPATHs_FILE_SIZE];
+
+    snprintf(dirPath,sizeof(dirPath),"%s",hunt_id);
+
+    if((dir = opendir(dirPath)) == 0){
+        perror("The directory could not be opened --RemoveHunt()");
+        exit(1);
+    }
+
+    struct dirent* entry = NULL; // Every entry of the directory
+    struct stat fileStat; // The stats of the file
+
+    while((entry = readdir(dir)) != NULL){
+        
+        // We doesn't take in consideration the current and the parent dir
+        if(strcmp(entry->d_name,".") == 0 || strcmp(entry->d_name,"..") == 0){
+            continue;
+        }
+
+        snprintf(filePath,sizeof(filePath),"%s/%s",dirPath,entry->d_name);
+
+        // Two cases: a symlink file and a binary one
+        //  === LINUX FUNCTIONS ===
+        /*
+        if(lstat(filePath,&fileStat) == -1){
+            perror("lstat function --RemoveHunt()");
+            continue;
+        }
+
+        // SymLink file
+        if(S_ISLINK(fileStat.st_mode)){
+            char linkedPath[PATH_FILE_SIZE];
+            int len = readlink(filePath, linkedPath, sizeof(linkedPath) -1);
+
+            if( len != -1){
+                linkedPath[len] = '\0';
+                remove(linkedPath);
+            }
+
+            remove(filePath);
+
+        // Binary file
+        }else{
+            remove(filePath);
+        }   
+        */
+   
+        //  === WINDOWS FUNCTIONS ===
+   
+    }
+
+    closedir(dir);
+    rmdir(dirPath);
+
+    printf("The treasure hunt %s was removed succesfully\n",hunt_id);
+
+    return 1;
+}   
+
 int main(int argc, char** argv ){
     
     if(argc < 2)
@@ -282,6 +346,14 @@ int main(int argc, char** argv ){
         }
 
         RemoveTreasure(argv[2],argv[3]);
+    }else if(strcmp(argv[1],"--remove_hunt") == 0){
+        if(argc != 3){
+            perror("Enter a game name\n");
+            exit(1);
+        }
+
+        RemoveHunt(argv[2]);
+
     }
 
     return 0;
