@@ -10,9 +10,14 @@ The purpose of this phase is to create a file-based backend for treasure managem
 
 ## 🧱 Project Structure
 
-
-treasure_hunt_project/ │ ├── treasure_manager.c # Main source file ├── treasure_manager # Compiled binary ├── README.md # Project documentation │ ├── <hunt_id>/ # Directory for each treasure hunt │ ├── <hunt_id>treasures.dat # Binary file containing all treasures │ └── logged_hunt.dat # File for logs or tracking data │ └── logged_hunt<hunt_id>.symlink → <hunt_id>/logged_hunt.dat # Symbolic link
-
+``` bash
+treasure_hunt_project/ │
+ ├── treasure_manager.c # Main source file
+ ├── <hunt_id> # Directory for a specific treasure hunt
+     └── <hunt_id>_treasures.dat # Binary file containing all treasures 
+     └── logged_hunt.dat # Symbolic Link, ../logged_hunt_<hunt_id>.symlink
+ ├── logged_hunt_<hunt_id>.symlink →  # Log File
+```
 
 Each hunt is represented by a **directory** named after the hunt ID. Treasures are stored in a binary file inside this directory. A **symbolic link** named `logged_hunt_<hunt_id>.symlink` points to the `logged_hunt.dat` file inside the hunt's directory for easier access.
 
