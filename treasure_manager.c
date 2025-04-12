@@ -119,7 +119,7 @@ int AddTreasure(treasure_t* t,char* directoryName){
     printf("Treasure ID: ");
     if(scanf("%s",t->id) != 1){
         perror("Enter a valid id (MAX 32 CHARACTERS)\n");
-        exit(1);
+        return 0;
     }
 
         // CHECKING IF THE ID ALREADY EXISTS
@@ -135,19 +135,19 @@ int AddTreasure(treasure_t* t,char* directoryName){
     printf("Username: ");
     if(fgets(t->username,sizeof(t->username),stdin) == NULL){
         perror("Enter a valid Username(MAX 64 characters)\n");
-        exit(1);
+        return 0;
     }
     t->username[strlen(t->username) -1] = '\0';     //Removing the \n character
 
     printf("GPS Coordinates\n -x: ");
     if(scanf("%f",&t->coordinates.x) != 1){
         perror("Enter a valid x coordinate(float)\n");
-        exit(1);
+        return 0;
     }
     printf(" -y: ");
     if(scanf("%f",&t->coordinates.y) != 1){
         perror("Enter a valid y coordinate(float)\n");
-        exit(1);
+        return 0;
     }
 
     printf("Value: ");
@@ -160,7 +160,7 @@ int AddTreasure(treasure_t* t,char* directoryName){
     printf("Clue Text: \n");
     if(fgets(t->clueText,sizeof(t->clueText),stdin) == NULL){
         perror("Enter a valid clue text (MAX 256 characters)\n");
-        exit(1);
+        return 0;
     }
 
     
@@ -191,12 +191,12 @@ int AddTreasure(treasure_t* t,char* directoryName){
         perror("Error at creating the treasure_path  --AddTreasure()\n");
         exit(1);
     }
-    if(snprintf(logged_hunt_path, sizeof(logged_hunt_path), "%s/logged_hunt.dat", directoryName) < 0){
+    if(snprintf(logged_hunt_path, sizeof(logged_hunt_path), "%s/logged_hunt.symlink", directoryName) < 0){
         perror("Error at creating the logged_path  --AddTreasure()\n");
         exit(1);
     }
 
-    if(snprintf(main_logged_hunt_path, sizeof(main_logged_hunt_path),"logged_hunt_%s.symlink", directoryName) < 0){
+    if(snprintf(main_logged_hunt_path, sizeof(main_logged_hunt_path),"logged_hunt_%s.dat", directoryName) < 0){
         perror("Error at creating the main_logged_path  --AddTreasure()\n");
         exit(1);
     }
@@ -211,7 +211,7 @@ int AddTreasure(treasure_t* t,char* directoryName){
 
     // Creating the sym link
     char target[PATH_FILE_SIZE];
-    if(snprintf(target, sizeof(target),"../logged_hunt_%s.symlink", directoryName) < 0){
+    if(snprintf(target, sizeof(target),"../logged_hunt_%s.dat", directoryName) < 0){
         perror("Error at creating the main_logged_path  --AddTreasure()\n");
         exit(1);
     }
@@ -314,7 +314,7 @@ int RemoveHunt(char* hunt_id){
         perror("Error at creating the dirpath  --RemoveHunt()\n");
         exit(1);
     }
-    if(snprintf(logged_huntPath,sizeof(logged_huntPath),"logged_hunt_%s.symlink",hunt_id) < 0){
+    if(snprintf(logged_huntPath,sizeof(logged_huntPath),"logged_hunt_%s.dat",hunt_id) < 0){
         perror("Error at creating the loggedpath  --RemoveHunt()\n");
         exit(1);
     }
@@ -437,7 +437,7 @@ void List(char* hunt_id){
 void addLogs(operation_t operation,char* hunt_id,char* treasure_id){
     char logged_hunt_path[PATH_FILE_SIZE];
 
-    if(snprintf(logged_hunt_path,sizeof(logged_hunt_path),"%s/logged_hunt.dat",hunt_id) < 0){
+    if(snprintf(logged_hunt_path,sizeof(logged_hunt_path),"%s/logged_hunt.symlink",hunt_id) < 0){
         perror("Error at creating the path  --addLogs()\n");
         exit(1);
     }
@@ -506,7 +506,7 @@ int main(int argc, char** argv ){
     
     if(argc < 2)
     {
-        perror("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <game name>\n\t--list\n\t--view\n\t--remove_treasure\n\t--remove_hunt\n");
+        perror("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
         exit(1);
     }
 
@@ -568,6 +568,8 @@ int main(int argc, char** argv ){
         addLogs((operation = VIEW),argv[2],argv[3]);
     }else{
         printf("You've entered an unknown command\n");
+        printf("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
+
     }
 
     return 0;
