@@ -503,12 +503,12 @@ void addLogs(operation_t operation,char* hunt_id,char* treasure_id){
 }
 
 int main(int argc, char** argv ){
-    
+
     if(argc < 2)
     {
         perror("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
         exit(1);
-    }
+    }  
 
     treasure_t* treasure = NULL;
     operation_t operation;
@@ -569,7 +569,6 @@ int main(int argc, char** argv ){
     }else{
         printf("You've entered an unknown command\n");
         printf("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
-
     }
 
     return 0;
