@@ -201,7 +201,7 @@ void list_hunts()
                         sprintf(hunt_path,"%s/%s_treasures.dat",entry->d_name,entry->d_name);
                     
                         int numberOfTreasures = countTheTreasuresInHunt(hunt_path);
-                        if(numberOfTreasures == 1){
+                        if(numberOfTreasures <= 1){
                             printf("%d treasure\n",numberOfTreasures);
                         }else{
                             printf("%d treasures\n",numberOfTreasures);
@@ -248,12 +248,35 @@ void handler(int signum)
     }
 }
 
-void start_monitor()
+
+void stop_monitor(){
+    if(kill(monitor_pid, SIGKILL) == 0){
+        printf("Process %d terminated \n",monitor_pid);   
+    }else{
+        printf("Failed to kill the process\n");
+    }
+}
+
+int exit_monitor(){
+    int status;
+    pid_t result = waitpid(monitor_pid,&status,WNOHANG);
+
+    if(result == 0){
+        printf("Process still running\n");
+    }else if(result == monitor_pid){
+        printf("The process has been terminated\n");
+        return 0;
+    }
+
+    return 1;
+}
+
+int start_monitor()
 {
     if (monitor_pid < 0)
     {
         printf("A procces is already running\n");
-        return;
+        return 1;
     }
 
     monitor_pid = fork();
@@ -293,7 +316,7 @@ void start_monitor()
 
                 kill(monitor_pid, SIGUSR1);
             }
-            else if (strcmp(buffer, "view_treasure") == 0)
+            else if(strcmp(buffer, "view_treasure") == 0)
             {
                 if (getHuntId("--view") == -1)
                 {
@@ -318,6 +341,14 @@ void start_monitor()
 
                 kill(monitor_pid, SIGUSR1);
             }
+            else if(strcmp(buffer,"stop_monitor") == 0){
+                stop_monitor();
+            }
+            else if(strcmp(buffer,"exit") == 0){
+                if(exit_monitor() == 0){
+                    return 0;
+                }
+            }
             else
             {
                 printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  stop_monitor\n");
@@ -326,6 +357,8 @@ void start_monitor()
             sleep(1);
         }
     }
+
+    return 1;
 }
 
 int main()
@@ -364,7 +397,9 @@ int main()
         if (strcmp(buffer, "start_monitor") == 0)
         {
             printf("=== A procces started ===\n\n");
-            start_monitor();
+            if(start_monitor() == 0){
+                break;
+            }
         }
         else
         {
