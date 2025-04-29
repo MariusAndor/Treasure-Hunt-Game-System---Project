@@ -9,29 +9,13 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+#include "treasure_manager.h"
+
 #define BUFFER_SIZE 64
 #define PATH_FILE_SIZE 256
 #define ID_SIZE 32
 #define COMMAND_SIZE 512
 #define TwoPATHs_FILE_SIZE 527
-
-
-
-#define USERNAME_SIZE 64
-#define CLUETEXT_SIZE 256
-
-typedef struct gps{
-    float x;
-    float y;
-}gps_t;
-
-typedef struct treasure{
-    char id[ID_SIZE];
-    char username[USERNAME_SIZE];
-    gps_t coordinates;
-    int value;
-    char clueText[CLUETEXT_SIZE];
-}treasure_t;
 
 
 pid_t monitor_pid = 0;
@@ -248,7 +232,6 @@ void handler(int signum)
     }
 }
 
-
 void stop_monitor(){
     if(kill(monitor_pid, SIGKILL) == 0){
         printf("Process %d terminated \n",monitor_pid);   
@@ -262,13 +245,24 @@ int exit_monitor(){
     pid_t result = waitpid(monitor_pid,&status,WNOHANG);
 
     if(result == 0){
-        printf("Process still running\n");
+        printf("Process is still running\n");
     }else if(result == monitor_pid){
         printf("The process has been terminated\n");
         return 0;
     }
 
     return 1;
+}
+
+void createCommandFileIfNotExisting(const char* path){
+    int path_fd = open(path, O_CREAT | O_TRUNC, 0777);
+    if (path_fd == -1)
+    {
+        perror("The files could not be created  --createCommandFileIfNotExisting()\n");
+        exit(1);
+    }
+
+    close(path_fd);
 }
 
 int start_monitor()
@@ -292,6 +286,9 @@ int start_monitor()
     {
         // PARENT
         char buffer[BUFFER_SIZE];
+
+        createCommandFileIfNotExisting(COMMAND_FILE_PATH);
+
         while (1)
         {
             printf("Enter a command: ");
@@ -361,9 +358,7 @@ int start_monitor()
     return 1;
 }
 
-int main()
-{
-
+int main(){
     struct sigaction sa_struct;
     sa_struct.sa_handler = handler;
     sigemptyset(&sa_struct.sa_mask);
