@@ -1,3 +1,4 @@
 *.exe
 game*/
 logged_hunt-*.dat
+command_file.txt

@@ -63,6 +63,19 @@ logged_hunt_hunt42.symlink → hunt42/logged_hunt.dat
 ```
 
 
+##  How to run the project?
+
+Just type in terminal make, and you will get to executables:
+
+``` bash
+── treasure_manager
+── treasure_hub
+
+```
+
+If you want to run the functions from 
+    Phase 1 type in ./treasure_manager
+    Phase 2 type in ./treasure_hub
 
 
 

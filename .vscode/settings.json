@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "treasure_manager.h": "c",
+        "string.h": "c"
+    }
+}
