@@ -348,7 +348,7 @@ int start_monitor()
             }
             else
             {
-                printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  stop_monitor\n");
+                printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  stop_monitor\n  exit");
             }
 
             sleep(1);
