@@ -18,7 +18,7 @@
 #define TwoPATHs_FILE_SIZE 527
 
 
-pid_t monitor_pid = 0;
+pid_t monitor_pid = -1;
 const char COMMAND_FILE_PATH[] = "command_file.txt";
 
 int readCommandFromFile(const char *path, char *command)
@@ -233,11 +233,28 @@ void handler(int signum)
 }
 
 void stop_monitor(){
-    if(kill(monitor_pid, SIGKILL) == 0){
-        printf("Process %d terminated \n",monitor_pid);   
-    }else{
-        printf("Failed to kill the process\n");
+    pid_t proces_pid = fork();
+    if(proces_pid == 0){
+        //CHILD
+        char string[10];
+        while(scanf("%10s",string) == 1){
+            printf("Error,wait until it ends\n");
+        }
+    }else if(proces_pid > 0){
+        //PARENT
+        sleep(3);
+        kill(proces_pid,SIGKILL);
+        int stat;
+        waitpid(proces_pid,&stat,0);
+
+        if(kill(monitor_pid, SIGKILL) == 0){
+            printf("Process %d terminated \n",monitor_pid);   
+        }else{
+            printf("Failed to kill the process\n");
+        }
+
     }
+   
 }
 
 int exit_monitor(){
@@ -267,12 +284,6 @@ void createCommandFileIfNotExisting(const char* path){
 
 int start_monitor()
 {
-    if (monitor_pid < 0)
-    {
-        printf("A procces is already running\n");
-        return 1;
-    }
-
     monitor_pid = fork();
     if (monitor_pid == 0)
     {
@@ -291,7 +302,9 @@ int start_monitor()
 
         while (1)
         {
+            usleep(99000);
             printf("Enter a command: ");
+
             if (fgets(buffer, sizeof(buffer), stdin) == 0)
             {
                 perror("Error at reading the commands\n");
@@ -301,7 +314,8 @@ int start_monitor()
 
             if (strcmp(buffer, "start_monitor") == 0)
             {
-                printf("--- A procces is already running ---\n");
+                printf("=== A procces is already running ===\n");
+                
             }
             else if (strcmp(buffer, "list_treasures") == 0)
             {
@@ -310,7 +324,6 @@ int start_monitor()
                     printf("An error occured when trying to get the hunt id\n");
                     continue;
                 }
-
                 kill(monitor_pid, SIGUSR1);
             }
             else if(strcmp(buffer, "view_treasure") == 0)
@@ -326,20 +339,18 @@ int start_monitor()
                     continue;
                 }
 
-                sleep(1);
-
-                kill(monitor_pid, SIGUSR2);
+                kill(monitor_pid, SIGUSR2);;
             }
             else if(strcmp(buffer,"list_hunts") == 0){
                 if(listHuntsOption() == -1)
                 {
                     continue;
                 }
-
                 kill(monitor_pid, SIGUSR1);
             }
             else if(strcmp(buffer,"stop_monitor") == 0){
                 stop_monitor();
+                break;
             }
             else if(strcmp(buffer,"exit") == 0){
                 if(exit_monitor() == 0){
@@ -350,8 +361,6 @@ int start_monitor()
             {
                 printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  stop_monitor\n");
             }
-
-            sleep(1);
         }
     }
 
@@ -392,13 +401,15 @@ int main(){
         if (strcmp(buffer, "start_monitor") == 0)
         {
             printf("=== A procces started ===\n\n");
-            if(start_monitor() == 0){
-                break;
+            start_monitor();
+        }else if(strcmp(buffer,"exit") == 0){
+            if(exit_monitor() == 0){
+                return 0;
             }
         }
         else
         {
-            printf("You may start first the monitor using the flag <start_monitor>\n");
+            printf("You may start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
         }
     }
 
