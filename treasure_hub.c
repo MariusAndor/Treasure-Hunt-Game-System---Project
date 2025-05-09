@@ -293,7 +293,7 @@ int exit_monitor(){
     pid_t result = waitpid(monitor_pid,&status,WNOHANG);
 
     if(result == 0){
-        printf("Process is still running\n");
+        printf("You cannot exit the hub because a process is still runing\n");
     }else if(result == monitor_pid){
         printf("Sucessfully exited the program\n");
         return 0;
