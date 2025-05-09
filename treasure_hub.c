@@ -12,6 +12,7 @@
 #include "treasure_manager.h"
 
 #define BUFFER_SIZE 64
+#define PIPE_BUFFER_SIZE 64
 #define PATH_FILE_SIZE 256
 #define ID_SIZE 32
 #define COMMAND_SIZE 512
@@ -19,6 +20,8 @@
 
 
 pid_t monitor_pid = -1;
+int pipe_fd[2] = {0,0};
+int stdout_fd = -1;
 const char COMMAND_FILE_PATH[] = "command_file.txt";
 
 int readCommandFromFile(const char *path, char *command)
@@ -134,12 +137,15 @@ void list_treasures()
         return;
     }
 
+
     char argv_temp[3][32];
     separateArgvFromCommand(argv_temp,command);
 
     pid_t pid = fork();
     if(pid == 0){
         //CHILD
+        dup2(pipe_fd[1],STDOUT_FILENO); //REDIRECTING THE STANDARD OUTPUT TO PIPE
+
         execl("./treasure_manager",argv_temp[0],argv_temp[1],argv_temp[2],NULL);
     }else if(pid > 0){
         //PARENT
@@ -156,6 +162,8 @@ void view_hunts()
         perror("Error at reading data from file\n");
         return;
     }
+
+    dup2(pipe_fd[1],STDOUT_FILENO); //REDIRECTING THE STANDARD OUTPUT TO PIPE
 
     system(command);
 }
@@ -181,6 +189,7 @@ void list_hunts()
         perror("Error at opening the directory\n");
         return ;
     }
+    dup2(pipe_fd[1],STDOUT_FILENO); //REDIRECTING THE STANDARD OUTPUT TO PIPE
 
     printf("  Hunt id's list:\n");
     while((entry = readdir(dir)) != NULL){
@@ -306,6 +315,13 @@ void createCommandFileIfNotExisting(const char* path){
 
 int start_monitor()
 {
+    
+    if(pipe(pipe_fd) == -1){
+        perror("Error at pipe\n");
+        exit(1);
+    }
+
+    stdout_fd = dup(STDOUT_FILENO);
 
     monitor_pid = fork();
     if(monitor_pid < 0){
@@ -317,6 +333,8 @@ int start_monitor()
     if (monitor_pid == 0)
     {
         // CHILD
+        close(pipe_fd[0]); //READING CLOSED
+        
         while (1)
         {
             pause();
@@ -328,9 +346,15 @@ int start_monitor()
         char buffer[BUFFER_SIZE];
         createCommandFileIfNotExisting(COMMAND_FILE_PATH);
 
+            // For Pipes
+        char pipe_buffer[PIPE_BUFFER_SIZE];
+        int buffer_size = -1;
+
+        close(pipe_fd[1]); //WRITING CLOSED
+
         while (1)
         {
-            usleep(99000);
+            usleep(100000);
 
             printf("Enter a command: ");
 
@@ -353,7 +377,21 @@ int start_monitor()
                     printf("An error occured when trying to get the hunt id\n");
                     continue;
                 }
+                
                 kill(monitor_pid, SIGUSR1);
+
+                //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
+                //printf("\n-> Printing the output from PIPE\n\n");
+
+                while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
+                    pipe_buffer[buffer_size]='\0';
+                    printf("%s",pipe_buffer);
+                    if(buffer_size < PIPE_BUFFER_SIZE-1){
+                        break;
+                    }
+                }
+
+                
             }
             else if(strcmp(buffer, "view_treasure") == 0)
             {
@@ -368,14 +406,41 @@ int start_monitor()
                     continue;
                 }
 
-                kill(monitor_pid, SIGUSR2);;
+                kill(monitor_pid, SIGUSR2);
+
+                //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
+                //printf("\n-> Printing the output from PIPE\n\n");
+
+                while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
+                    pipe_buffer[buffer_size]='\0';
+                    printf("%s",pipe_buffer);
+                    if(buffer_size < PIPE_BUFFER_SIZE-1){
+                        break;
+                    }
+                }
+
             }
             else if(strcmp(buffer,"list_hunts") == 0){
+                
                 if(listHuntsOption() == -1)
                 {
                     continue;
                 }
+
                 kill(monitor_pid, SIGUSR1);
+
+                //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
+                //printf("\n-> Printing the output from PIPE\n\n");
+
+                while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
+                    pipe_buffer[buffer_size]='\0';
+                    
+                    printf("%s",pipe_buffer);
+                    if(buffer_size < PIPE_BUFFER_SIZE-1){
+                        break;
+                    }
+                }
+
             }
             else if(strcmp(buffer,"stop_monitor") == 0){
                 stop_monitor();
@@ -392,6 +457,8 @@ int start_monitor()
             }
         }
     }
+
+    close(pipe_fd[0]);
 
     return 1;
 }
@@ -438,7 +505,7 @@ int main(){
         }
         else
         {
-            printf("You may only start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
+            printf("You may start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
         }
     }
 
