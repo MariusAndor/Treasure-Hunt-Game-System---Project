@@ -78,4 +78,8 @@ If you want to run the functions from
     Phase 2 type in ./treasure_hub
 
 
+##  Phase Status
 
+Phase 1: ✅
+Phase 2: ✅
+Phase 3: --

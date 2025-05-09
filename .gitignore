@@ -1,4 +1,6 @@
 *.exe
 game*/
-logged_hunt-*.dat
+logged_hunt_*.dat
 command_file.txt
+treasure_hub
+treasure_manager

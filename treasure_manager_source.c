@@ -302,7 +302,6 @@ int RemoveHunt(char* hunt_id){
         exit(1);
     }
 
-    
 
     struct dirent* entry = NULL;    // Every entry of the directory
 

@@ -114,6 +114,17 @@ int getTreasureId()
     return 1;
 }
 
+void separateArgvFromCommand(char argv_temp[][32],char* command){
+    char* token = strtok(command," ");
+    unsigned int index = 0;
+    
+    while(token != NULL){
+        strcpy(argv_temp[index],token);
+        index++;
+        token = strtok(NULL," ");
+    }
+}
+
 void list_treasures()
 {
     char command[COMMAND_SIZE];
@@ -123,7 +134,18 @@ void list_treasures()
         return;
     }
 
-    system(command);
+    char argv_temp[3][32];
+    separateArgvFromCommand(argv_temp,command);
+
+    pid_t pid = fork();
+    if(pid == 0){
+        //CHILD
+        execl("./treasure_manager",argv_temp[0],argv_temp[1],argv_temp[2],NULL);
+    }else if(pid > 0){
+        //PARENT
+        wait(NULL);
+    }
+
 }
 
 void view_hunts()
@@ -264,7 +286,7 @@ int exit_monitor(){
     if(result == 0){
         printf("Process is still running\n");
     }else if(result == monitor_pid){
-        printf("The process has been terminated\n");
+        printf("Sucessfully exited the program\n");
         return 0;
     }
 
@@ -284,7 +306,14 @@ void createCommandFileIfNotExisting(const char* path){
 
 int start_monitor()
 {
+
     monitor_pid = fork();
+    if(monitor_pid < 0){
+        printf("Error at creating a process\n");
+        exit(1);
+    }
+
+    
     if (monitor_pid == 0)
     {
         // CHILD
@@ -297,12 +326,12 @@ int start_monitor()
     {
         // PARENT
         char buffer[BUFFER_SIZE];
-
         createCommandFileIfNotExisting(COMMAND_FILE_PATH);
 
         while (1)
         {
             usleep(99000);
+
             printf("Enter a command: ");
 
             if (fgets(buffer, sizeof(buffer), stdin) == 0)
@@ -409,7 +438,7 @@ int main(){
         }
         else
         {
-            printf("You may start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
+            printf("You may only start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
         }
     }
 

@@ -8,4 +8,5 @@ treasure_hub: treasure_hub.c treasure_manager_source.c treasure_manager.h
 
 clean: 
 	rm -f *.o treasure_manager treasure_hub
-
+ 
+ 
