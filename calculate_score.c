@@ -79,10 +79,16 @@ void createOrExpandList(username_value_list_t* uVList,unsigned int counter){
 }
 
 void printUsernameValueList(username_value_list_t* list){
+    if(list->index == 0){
+        printf("   There are no treasures in this hunt\n\n");
+        return ;
+    }
+    
     for(int i=0; i<list->index; i++){
-        printf("Username: %s\n",list->usernameList[i]);
+        printf("   Username: %s\n",list->usernameList[i]);
         printf("   Score: %d\n",list->valueList[i]);
     }
+    printf("\n");
 }
 
 int checkIfIsInList(char* name,username_value_list_t* list){
@@ -147,7 +153,7 @@ int main(int argc, char** argv){
     list = calculate(argv[1]);
     //print
     if(list == NULL){
-        exit(1);
+        return -1;
     }
     printUsernameValueList(list);
 

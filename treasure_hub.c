@@ -21,7 +21,6 @@
 
 pid_t monitor_pid = -1;
 int pipe_fd[2] = {0,0};
-int stdout_fd = -1;
 const char COMMAND_FILE_PATH[] = "command_file.txt";
 
 int readCommandFromFile(const char *path, char *command)
@@ -78,14 +77,25 @@ int writeCommandInFile(const char *path, char *command)
     return 1;
 }
 
-int getHuntId(char *flag)
+void createCommandFileIfNotExisting(const char* path){
+    int path_fd = open(path, O_CREAT | O_TRUNC, 0777);
+    if (path_fd == -1)
+    {
+        perror("The files could not be created  --createCommandFileIfNotExisting()\n");
+        exit(1);
+    }
+
+    close(path_fd);
+}
+
+int getHuntId(char* executableFile,char *flag)
 {
     printf("  Enter a hunt_id: ");
     char hunt_id[PATH_FILE_SIZE];
     char command[COMMAND_SIZE];
 
     scanf("%s", hunt_id);
-    sprintf(command, "./treasure_manager %s %s", flag, hunt_id);
+    sprintf(command, "./%s %s %s",executableFile, flag, hunt_id);
     getc(stdin); // CONSUME THE \n
 
     command[strlen(command)] = '\0';
@@ -125,6 +135,12 @@ void separateArgvFromCommand(char argv_temp[][32],char* command){
         strcpy(argv_temp[index],token);
         index++;
         token = strtok(NULL," ");
+    }
+
+    if(index < 2){
+        for(int i=index; index < 3; i++){
+            strcpy(argv_temp[i],"");
+        }
     }
 }
 
@@ -189,6 +205,7 @@ void list_hunts()
         perror("Error at opening the directory\n");
         return ;
     }
+    
     dup2(pipe_fd[1],STDOUT_FILENO); //REDIRECTING THE STANDARD OUTPUT TO PIPE
 
     printf("  Hunt id's list:\n");
@@ -202,21 +219,29 @@ void list_hunts()
 
         struct stat st;
 
+
         if(stat(path,&st) == 0 && S_ISDIR(st.st_mode) && path[2] != '.'){
-            printf("     %s has ",entry->d_name);
 
             DIR* subdir = opendir(entry->d_name);
             if(subdir){
                 struct dirent* subentry;
                 
                 char hunt_path[TwoPATHs_FILE_SIZE];
+                sprintf(hunt_path,"%s/%s_treasures.dat",entry->d_name,entry->d_name);
+
+                if(open(hunt_path,O_RDONLY,0777) == -1){
+                    // It's not a hunt dir
+                    continue;
+                }
+
+                printf("     %s has ",entry->d_name);
 
                 if((subentry = readdir(subdir)) != NULL){
                     if(strcmp(subentry->d_name,".") != 0 && strcmp(subentry->d_name,"..") != 0){
-                        sprintf(hunt_path,"%s/%s_treasures.dat",entry->d_name,entry->d_name);
+                        
                     
                         int numberOfTreasures = countTheTreasuresInHunt(hunt_path);
-                        if(numberOfTreasures <= 1){
+                        if(numberOfTreasures == 1){
                             printf("%d treasure\n",numberOfTreasures);
                         }else{
                             printf("%d treasures\n",numberOfTreasures);
@@ -243,24 +268,6 @@ int listHuntsOption(){
     }
 
     return 1;
-}
-
-void handler(int signum)
-{
-    if (signum == SIGUSR1)
-    {
-        char command[COMMAND_SIZE];
-        readCommandFromFile(COMMAND_FILE_PATH,command);
-        if(strcmp(command,"./treasure_manager") == 0){
-            list_hunts();
-        }else{
-            list_treasures();
-        }   
-    }
-    else if (signum == SIGUSR2)
-    {
-        view_hunts();
-    }
 }
 
 void stop_monitor(){
@@ -302,26 +309,121 @@ int exit_monitor(){
     return 1;
 }
 
-void createCommandFileIfNotExisting(const char* path){
-    int path_fd = open(path, O_CREAT | O_TRUNC, 0777);
-    if (path_fd == -1)
+void openAProcessForANewHunt(char* hunt_id){
+
+    pid_t pid = fork();
+    
+    if(pid == 0){
+        //CHILD
+        dup2(pipe_fd[1],STDOUT_FILENO); //REDIRECTING THE STANDARD OUTPUT TO PIPE
+
+        close(pipe_fd[0]);
+        
+        char command[COMMAND_SIZE];
+        char newCommand[COMMAND_SIZE*2];
+
+        readCommandFromFile(COMMAND_FILE_PATH,command);
+        sprintf(newCommand,"%s %s",command,hunt_id);
+
+        printf("For %s hunt\n  The statistics are: \n",hunt_id);
+
+        system(newCommand);
+
+        exit(0);
+
+    }else if(pid > 0){
+        //PARENT
+        wait(NULL);
+    }
+}
+
+void calculate_score(){
+    char command[COMMAND_SIZE];
+    if (readCommandFromFile(COMMAND_FILE_PATH, command) != 1)
     {
-        perror("The files could not be created  --createCommandFileIfNotExisting()\n");
-        exit(1);
+        perror("Error at reading data from file\n");
+        return;
     }
 
-    close(path_fd);
+    struct dirent *entry;
+    DIR* dir = opendir(".");
+
+    if(dir == NULL){
+        perror("Error at opening the directory\n");
+        return ;
+    }
+
+    // Going to every entry from the dir
+    while((entry = readdir(dir)) != NULL){        
+        if(strcmp(entry->d_name,".") == 0 || strcmp(entry->d_name,"..") == 0){
+            continue;
+        }
+
+        char path[PATH_FILE_SIZE+2];
+        sprintf(path,"./%s",entry->d_name);
+        
+        struct stat st;
+        
+        // Only the entries that are hunts
+        if(stat(path,&st) == 0 && S_ISDIR(st.st_mode) ){
+            
+            char hunt_path[TwoPATHs_FILE_SIZE+2];
+            
+            sprintf(hunt_path,"./%s/%s_treasures.dat",entry->d_name,entry->d_name);
+            
+            // Verifing if the DIR is a HUNT or other DIR
+            if(open(hunt_path,O_RDONLY,0777) == -1){
+                // It's not a hunt dir
+                continue;
+            }else{
+                // It's a hunt dir
+
+                openAProcessForANewHunt(entry->d_name);
+            }
+        }
+
+        if(entry == NULL){
+            break;
+        }
+        
+    }
+    close(pipe_fd[0]);
+
+}
+
+void handler(int signum)
+{
+    if (signum == SIGUSR1)
+    {
+        char command[COMMAND_SIZE];
+        readCommandFromFile(COMMAND_FILE_PATH,command);
+        if(strcmp(command,"./treasure_manager") == 0){
+            list_hunts();
+        }else{
+            list_treasures();
+        }   
+    }
+    else if (signum == SIGUSR2)
+    {
+        char command[COMMAND_SIZE];
+        readCommandFromFile(COMMAND_FILE_PATH,command);
+        if(strstr(command,"./calculate_score") != NULL){
+            calculate_score();
+        }else{
+            view_hunts();
+        } 
+        
+    }
 }
 
 int start_monitor()
 {
-    
     if(pipe(pipe_fd) == -1){
         perror("Error at pipe\n");
         exit(1);
     }
 
-    stdout_fd = dup(STDOUT_FILENO);
+    
 
     monitor_pid = fork();
     if(monitor_pid < 0){
@@ -346,7 +448,7 @@ int start_monitor()
         char buffer[BUFFER_SIZE];
         createCommandFileIfNotExisting(COMMAND_FILE_PATH);
 
-            // For Pipes
+        // For Pipes
         char pipe_buffer[PIPE_BUFFER_SIZE];
         int buffer_size = -1;
 
@@ -372,7 +474,7 @@ int start_monitor()
             }
             else if (strcmp(buffer, "list_treasures") == 0)
             {
-                if (getHuntId("--list") == -1)
+                if (getHuntId("./treasure_manager","--list") == -1)
                 {
                     printf("An error occured when trying to get the hunt id\n");
                     continue;
@@ -382,7 +484,7 @@ int start_monitor()
 
                 //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
                 //printf("\n-> Printing the output from PIPE\n\n");
-
+                usleep(100000);
                 while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
                     pipe_buffer[buffer_size]='\0';
                     printf("%s",pipe_buffer);
@@ -395,7 +497,7 @@ int start_monitor()
             }
             else if(strcmp(buffer, "view_treasure") == 0)
             {
-                if (getHuntId("--view") == -1)
+                if (getHuntId("./treasure_manager","--view") == -1)
                 {
                     printf("An error occured when trying to get the hunt id\n");
                     continue;
@@ -407,9 +509,9 @@ int start_monitor()
                 }
 
                 kill(monitor_pid, SIGUSR2);
-
                 //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
                 //printf("\n-> Printing the output from PIPE\n\n");
+                usleep(100000);
 
                 while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
                     pipe_buffer[buffer_size]='\0';
@@ -431,7 +533,7 @@ int start_monitor()
 
                 //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
                 //printf("\n-> Printing the output from PIPE\n\n");
-
+                usleep(100000);
                 while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
                     pipe_buffer[buffer_size]='\0';
                     
@@ -441,6 +543,23 @@ int start_monitor()
                     }
                 }
 
+            }else if(strcmp(buffer,"calculate_score") == 0){
+                
+                writeCommandInFile(COMMAND_FILE_PATH,"./calculate_score");
+               
+                kill(monitor_pid, SIGUSR2);
+                //=== TESTING TO SEE IF THE OUTPUT IS PRINTED FROM THE PIPE
+                //printf("\n-> Printing the output from PIPE\n\n");
+                
+                usleep(100000);
+                while((buffer_size = read(pipe_fd[0],pipe_buffer,sizeof(pipe_buffer)-1)) > 0){
+                    pipe_buffer[buffer_size]='\0';
+                    printf("%s",pipe_buffer);
+                    if(buffer_size < PIPE_BUFFER_SIZE-1){
+                        break;
+                    }
+                }
+                
             }
             else if(strcmp(buffer,"stop_monitor") == 0){
                 stop_monitor();
@@ -453,7 +572,7 @@ int start_monitor()
             }
             else
             {
-                printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  stop_monitor\n");
+                printf("Enter a valid command like: \n  list_hunts\n  list_treasures\n  view_treasure\n  calculate_score\n  stop_monitor\n");
             }
         }
     }
@@ -505,7 +624,7 @@ int main(){
         }
         else
         {
-            printf("You may start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
+            printf("You may only start the monitor using the flag <start_monitor> or exit the monitor using <exit>\n");
         }
     }
 
