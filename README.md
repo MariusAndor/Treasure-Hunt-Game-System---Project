@@ -82,4 +82,4 @@ If you want to run the functions from
 
 Phase 1: ✅
 Phase 2: ✅
-Phase 3: --
+Phase 3: ✅

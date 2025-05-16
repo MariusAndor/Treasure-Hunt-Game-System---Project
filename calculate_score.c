@@ -89,6 +89,7 @@ void printUsernameValueList(username_value_list_t* list){
         printf("   Score: %d\n",list->valueList[i]);
     }
     printf("\n");
+    
 }
 
 int checkIfIsInList(char* name,username_value_list_t* list){

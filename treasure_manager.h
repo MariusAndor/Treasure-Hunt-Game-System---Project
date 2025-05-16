@@ -43,7 +43,7 @@ int RemoveHunt(char* hunt_id);
 
 int ViewHunt(char* hunt_id,char* treasure_id);
 
-void List(char* hunt_id);
+int List(char* hunt_id);
 
 void addLogs(operation_t operation,char* hunt_id,char* treasure_id);
 

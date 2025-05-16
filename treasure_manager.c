@@ -8,8 +8,8 @@ int main(int argc, char** argv ){
 
     if(argc < 2)
     {
-        perror("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
-        exit(1);
+        printf("Too few arguments\n\nHere is a list of flags:\n-------------\n\t--add <hunt_id>\n\t--list <hunt_id>\n\t--view <hunt_id> <treasure_id>\n\t--remove_treasure <hunt_id> <treasure_id>\n\t--remove_hunt <hunt_id>\n");
+        return 0;
     }  
 
     treasure_t* treasure = NULL;
@@ -40,8 +40,10 @@ int main(int argc, char** argv ){
             exit(1);
         }
 
-        List(argv[2]);
-        addLogs((operation = LIST),argv[2],NULL);
+        if(List(argv[2]) != -1){
+            addLogs((operation = LIST),argv[2],NULL);
+        }
+        
 
     }else if(strcmp(argv[1],"--remove_treasure") == 0){
         if(argc != 4){
@@ -49,8 +51,10 @@ int main(int argc, char** argv ){
             exit(1);
         }
 
-        RemoveTreasure(argv[2],argv[3]);
-        addLogs((operation = REMOVE_TREASURE),argv[2],argv[3]);
+        if(RemoveTreasure(argv[2],argv[3]) != -1){
+            addLogs((operation = REMOVE_TREASURE),argv[2],argv[3]);
+        }
+        
 
     }else if(strcmp(argv[1],"--remove_hunt") == 0){
         if(argc != 3){
@@ -66,7 +70,9 @@ int main(int argc, char** argv ){
             exit(1);
         }
 
-        ViewHunt(argv[2],argv[3]);
+        if(ViewHunt(argv[2],argv[3]) == -1){
+            return 0;
+        }
         addLogs((operation = VIEW),argv[2],argv[3]);
     }else{
         printf("You've entered an unknown command\n");

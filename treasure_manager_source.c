@@ -236,7 +236,7 @@ int RemoveTreasure(char* hunt_id,char* treasure_id){
     
     if(treasure_fd == -1){
         perror("Error at opening the treasures file");
-        exit(1);
+        return -1;
     }
 
     if(temp_fd == -1){
@@ -340,6 +340,12 @@ int ViewHunt(char* hunt_id,char* treasure_id){
     }
 
     int treasure_fd = open(treasures_path,O_RDONLY,0644);
+    
+    if(treasure_fd == -1){
+        printf("Error, the hunt could not be hound\n");
+        return -1;
+    }
+    
     treasure_t t;
 
     int foundTheTreasure = -1;
@@ -354,7 +360,7 @@ int ViewHunt(char* hunt_id,char* treasure_id){
 
     if(bytes < 0){
         perror("Error at reading --ViewHunt()\n");
-        exit(1);
+        return -1;
     }
 
     if(foundTheTreasure == 1){
@@ -366,7 +372,7 @@ int ViewHunt(char* hunt_id,char* treasure_id){
     return 1;
 }
 
-void List(char* hunt_id){
+int List(char* hunt_id){
     char path[PATH_FILE_SIZE];
     if(snprintf(path, sizeof(path), "%s/%s_treasures.dat", hunt_id,hunt_id) < 0){
         perror("Error at creating the path  --List()\n");
@@ -375,8 +381,8 @@ void List(char* hunt_id){
     
     int path_fd = open(path,O_RDONLY,0644);
     if(path_fd == -1){
-        perror("When trying to list the hunts, the files could not be opened or could not be found\n");
-        exit(1);
+        printf("When trying to list the hunts, the files could not be opened or could not be found\n");
+        return -1;
     }
 
     treasure_t t;
@@ -393,9 +399,14 @@ void List(char* hunt_id){
 
     printf("Last modification time: %s\n", ctime(&fileStat.st_mtime));
 
-    int bytes = 0;
+    int bytes = 0, thereAreNoTreasure = 1;
     while((bytes = read(path_fd,&t,sizeof(treasure_t))) > 0){
+        thereAreNoTreasure = 0;
         printTreasure(&t);
+    }
+
+    if(thereAreNoTreasure == 1){
+        printf("There are no treasures in this hunt\n\n");
     }
 
     close(path_fd);
@@ -404,6 +415,9 @@ void List(char* hunt_id){
         perror("Error at reading data --List()\n");
         exit(1);
     }    
+
+
+    return 1;
 }
 
 void addLogs(operation_t operation,char* hunt_id,char* treasure_id){
